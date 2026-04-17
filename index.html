@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flujo Logístico — Seller · Primera Milla · Hub · Última Milla</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: rgba(0,0,0,0.12);
+    --border-strong: rgba(0,0,0,0.22);
+    --text: #1a1a18;
+    --text-muted: #6b6a64;
+    --text-faint: #9b9a93;
+    --accent: #1a1a18;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  }
+  .logo {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 16px; font-weight: 700; flex-shrink: 0;
+  }
+  header h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  header p  { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+  /* ── Layout ── */
+  .layout { display: flex; height: calc(100vh - 65px); }
+
+  /* ── Sidebar ── */
+  aside {
+    width: 220px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 16px 12px;
+    gap: 6px;
+    overflow-y: auto;
+  }
+  aside .section-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-faint);
+    padding: 4px 8px 8px;
+  }
+  .nav-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: none; background: transparent;
+    color: var(--text-muted);
+    font-size: 13px; font-weight: 500;
+    text-align: left; width: 100%;
+    transition: background .15s, color .15s;
+  }
+  .nav-btn:hover { background: var(--surface2); color: var(--text); }
+  .nav-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .nav-btn .icon { font-size: 16px; flex-shrink: 0; }
+  .nav-btn .badge {
+    margin-left: auto;
+    font-size: 10px; font-weight: 600;
+    background: rgba(255,255,255,0.2);
+    padding: 1px 6px; border-radius: 10px;
+    display: none;
+  }
+  .nav-btn.active .badge { display: block; }
+
+  aside .divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+  /* ── Legend ── */
+  .legend { padding: 8px 12px; }
+  .legend-title { font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--text-faint); margin-bottom: 8px; }
+  .leg { display: flex; align-items: center; gap: 7px; font-size: 11px;
+    color: var(--text-muted); margin-bottom: 5px; }
+  .leg-dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ── Main area ── */
+  main {
+    flex: 1; display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap;
+  }
+  .toolbar h2 { font-size: 14px; font-weight: 600; flex: 1; }
+  .toolbar-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 6px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all .15s;
+  }
+  .toolbar-btn:hover { background: var(--surface2); color: var(--text); }
+  #zoom-label { font-size: 12px; color: var(--text-faint); min-width: 38px; text-align: center; }
+
+  /* ── Canvas ── */
+  .canvas-wrap {
+    flex: 1; overflow: auto;
+    padding: 24px;
+    position: relative;
+  }
+  #diagram-container {
+    transform-origin: top left;
+    transition: transform .2s ease;
+    display: inline-block;
+  }
+  svg { display: block; }
+
+  /* ── Info panel ── */
+  .info-panel {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex; align-items: flex-start; gap: 12px;
+    min-height: 60px; max-height: 90px;
+  }
+  .info-icon {
+    width: 32px; height: 32px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+    background: var(--surface2);
+  }
+  .info-text { flex: 1; }
+  .info-id { font-size: 11px; font-weight: 600; color: var(--text-faint); }
+  .info-label { font-size: 13px; font-weight: 600; color: var(--text); margin: 1px 0; }
+  .info-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+  /* ── Responsive ── */
+  @media (max-width: 680px) {
+    aside { width: 56px; padding: 12px 6px; }
+    .nav-btn span:not(.icon) { display: none; }
+    .nav-btn .badge { display: none !important; }
+    aside .section-label { display: none; }
+    .legend { display: none; }
+    header h1 { font-size: 13px; }
+    header p { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">FL</div>
+  <div>
+    <h1>Flujo Logístico</h1>
+    <p>Seller · Primera Milla · Hub / Depósito (WMS) · Última Milla</p>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside>
+    <div class="section-label">Etapas</div>
+    <button class="nav-btn active" onclick="showSection('seller', this)">
+      <span class="icon">📦</span>
+      <span>Seller / Origen</span>
+      <span class="badge">S</span>
+    </button>
+    <button class="nav-btn" onclick="showSection('primera', this)">
+      <span class="icon">🚚</span>
+      <span>Primera Milla</span>
+      <span class="badge">F</span>
+    </button>
+    <button class="nav-btn" onclick="showSection('hub', this)">
+      <span class="icon">🏭</span>
+      <span>Hub / Depósito</span>
+      <span class="badge">H</span>
+    </button>
+    <button class="nav-btn" onclick="showSection('ultima', this)">
+      <span class="icon">🏠</span>
+      <span>Última Milla</span>
+      <span class="badge">L</span>
+    </button>
+
+    <div class="divider"></div>
+
+    <div class="legend">
+      <div class="legend-title">Tipos de nodo</div>
+      <div class="leg"><div class="leg-dot" style="background:#B5D4F4;border:0.5px solid #185FA5"></div>Sistema</div>
+      <div class="leg"><div class="leg-dot" style="background:#C0DD97;border:0.5px solid #3B6D11"></div>Humano</div>
+      <div class="leg"><div class="leg-dot" style="background:#FAC775;border:0.5px solid #854F0B"></div>Decisión</div>
+      <div class="leg"><div class="leg-dot" style="background:#F7C1C1;border:0.5px solid #A32D2D"></div>Excepción</div>
+      <div class="leg"><div class="leg-dot" style="background:#FEF9E7;border:0.5px solid #B7950B"></div>Output</div>
+      <div class="leg"><div class="leg-dot" style="background:#D5F5E3;border:0.5px solid #0F6E56"></div>Inicio / Fin</div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="toolbar">
+      <h2 id="section-title">Seller / Origen</h2>
+      <button class="toolbar-btn" onclick="zoomOut()">− Alejar</button>
+      <span id="zoom-label">100%</span>
+      <button class="toolbar-btn" onclick="zoomIn()">+ Acercar</button>
+      <button class="toolbar-btn" onclick="resetZoom()">↺ Restablecer</button>
+    </div>
+
+    <div class="canvas-wrap" id="canvas-wrap">
+      <div id="diagram-container">
+        <svg id="diagram-svg" width="700"></svg>
+      </div>
+    </div>
+
+    <div class="info-panel">
+      <div class="info-icon" id="info-icon">ℹ️</div>
+      <div class="info-text">
+        <div class="info-id" id="info-id">—</div>
+        <div class="info-label" id="info-label">Seleccioná un nodo</div>
+        <div class="info-desc" id="info-desc">Hacé clic en cualquier nodo del diagrama para ver su descripción detallada.</div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════
+   PALETA & TIPOS
+═══════════════════════════════════════ */
+const C = {
+  sistema:  { fill:'#B5D4F4', stroke:'#185FA5', text:'#0C447C' },
+  humano:   { fill:'#C0DD97', stroke:'#3B6D11', text:'#27500A' },
+  decision: { fill:'#FAC775', stroke:'#854F0B', text:'#633806' },
+  excepcion:{ fill:'#F7C1C1', stroke:'#A32D2D', text:'#791F1F' },
+  output:   { fill:'#FEFDE7', stroke:'#B7950B', text:'#633806' },
+  inicio:   { fill:'#D5F5E3', stroke:'#0F6E56', text:'#085041' },
+  fin:      { fill:'#D5F5E3', stroke:'#0F6E56', text:'#085041' },
+};
+
+const TYPE_ICONS = {
+  sistema:'⚙️', humano:'👤', decision:'◆', excepcion:'⚠️', output:'📋', inicio:'▶', fin:'⏹',
+};
+
+/* ═══════════════════════════════════════
+   DESCRIPCIONES
+═══════════════════════════════════════ */
+const DESCS = {
+  S0:'Inicio del proceso de venta.',
+  S1:'El sistema registra la venta generada.',
+  Sd1:'Bifurcación según el tipo de ingreso: automático o manual.',
+  S2:'La venta es ingresada automáticamente al sistema.',
+  S3:'El sistema crea el Shipment ID de forma automática.',
+  S4:'Se imprime la etiqueta de e-commerce para el envío.',
+  S5:'Un operador ingresa manualmente los datos de la venta.',
+  S6:'Se genera el Shipment ID de forma manual.',
+  S7:'Se emite la etiqueta de envío desde el TMS propio del seller.',
+  S8:'El seller realiza el picking y packing del pedido.',
+  Sd3:'Decisión sobre el método de inducción: drop off o colecta domiciliaria.',
+  S9:'El seller traslada los paquetes al punto de drop off designado.',
+  S10:'Los paquetes quedan en el domicilio del seller aguardando retiro.',
+  F0:'Los paquetes arriban al punto de drop off y se recepcionan.',
+  F1:'¿La colecta está guiada por el TMS o es autónoma?',
+  F2:'El sistema genera rutas optimizadas para los repartidores de colecta.',
+  F3:'El operador realiza la colecta de forma autónoma, sin guía del TMS.',
+  F4:'El sistema sugiere los paquetes disponibles para ser retirados.',
+  F5:'El repartidor retira el paquete en el domicilio del seller (modo guiado).',
+  F6:'El repartidor retira el paquete sin guía del sistema.',
+  Fd1:'¿El paquete fue efectivamente colectado?',
+  F7:'Los paquetes se consolidan en el vehículo de transporte.',
+  FX1:'El paquete no fue colectado. Se inicia el flujo de excepciones.',
+  Fd4:'¿El paquete se encuentra bajo custodia del transportista?',
+  F8:'El vehículo transporta los paquetes hacia el hub o depósito.',
+  FX5:'Se detecta pérdida o hurto del paquete durante el tránsito.',
+  Fd7:'¿Se requiere transferencia del paquete entre distintos drivers?',
+  F9:'Se realiza la transferencia física del paquete entre conductores.',
+  F10:'Se confirma la transferencia en el sistema.',
+  Fd5:'¿Se confirmó el arribo correcto al hub?',
+  FX6:'Se registra el incidente de pérdida o hurto.',
+  FX7:'Se investiga el faltante para intentar recuperarlo.',
+  Fd6:'¿Se logró recuperar el paquete?',
+  FX8:'Cierre del caso logístico por incidente irresoluble.',
+  FR1:'Se programa un reintento de colecta para el paquete.',
+  FR2:'¿El reintento es Same Day (SD) o Next Day (ND)?',
+  FR3:'Se asigna la colecta como Same Day.',
+  FR4:'Se asigna la colecta como Next Day.',
+  FR5:'Se notifica al seller sobre el cambio en la colecta.',
+  FI1:'Se intenta ingresar el Shipment manualmente al sistema.',
+  Fd3:'¿El ingreso manual fue exitoso?',
+  FO1:'El ingreso manual resultó exitoso. Continúa el flujo normal.',
+  FC1:'Se cancela el Shipment en el sistema.',
+  FM1:'Motivo no colecta: paquete sin preparar.',
+  FM2:'Motivo no colecta: capacidad insuficiente en el vehículo.',
+  FM3:'Motivo no colecta: etiqueta ilegible o inexistente.',
+  FM4:'Motivo no colecta: Shipment ID no válido.',
+  FM5:'Motivo no colecta: cliente ausente.',
+  FM6:'Motivo no colecta: dirección incorrecta.',
+  FM7:'Motivo no colecta: rechazo del cliente.',
+  FM8:'Motivo no colecta: problema de acceso al domicilio.',
+  FM9:'Motivo no colecta: otro motivo no especificado.',
+  H1:'Recepción física de los paquetes en el hub o depósito.',
+  Hd0:'¿Se detectó algún faltante comparando los paquetes físicos con los colectados?',
+  HX0:'Se registra el faltante detectado durante la recepción.',
+  HX9:'Se investiga el origen del faltante para localizarlo.',
+  Hd9:'¿El paquete faltante fue localizado?',
+  HR7:'Retención operativa: el paquete pasa a cuarentena.',
+  H2:'El sistema realiza el check-in del paquete ingresado.',
+  Hd1:'¿El ingreso (check-in) fue correcto?',
+  H3:'El paquete es trasladado a la zona de staging inbound.',
+  H4:'El paquete es inducido al proceso de sorting.',
+  H5:'Se escanea el código de barras o QR del paquete.',
+  Hd3:'¿La etiqueta del paquete es válida y legible?',
+  H6:'El sistema determina el destino logístico del paquete.',
+  H7:'El paquete es clasificado físicamente en la zona de staging outbound.',
+  H8:'Los paquetes se consolidan agrupados por ruta de entrega.',
+  Hd2:'¿El paquete fue asignado a una ruta de entrega?',
+  H9:'El paquete es asignado a un repartidor de última milla.',
+  HX1:'El check-in falló. Se activa el flujo de resolución.',
+  HX2:'¿Cuál es el motivo del fallo en el check-in?',
+  HX3:'Motivo check-in: Shipment ID no reconocido.',
+  HX4:'Motivo check-in: etiqueta ilegible o ausente.',
+  HX5:'Motivo check-in: paquete dañado.',
+  HX6:'Motivo check-in: paquete duplicado en el sistema.',
+  HX7:'Motivo check-in: inconsistencia entre el paquete físico y el sistema.',
+  HR1:'Mesa de resolución inbound analiza el caso.',
+  HR2:'¿La resolución del fallo fue exitosa?',
+  HY1:'El paquete no fue asignado a ninguna ruta. Se activa excepción.',
+  HY2:'¿Cuál es el motivo de la no asignación a ruta?',
+  HY3:'Motivo no asignación: capacidad de ruta completa.',
+  HY4:'Motivo no asignación: paquete fuera de zona operativa.',
+  HY5:'Motivo no asignación: cutoff operativo excedido.',
+  HY6:'Motivo no asignación: datos de dirección incompletos.',
+  HY7:'Motivo no asignación: pendiente de definición operativa.',
+  HR3:'Se replanifica la asignación a una ruta disponible.',
+  HR4:'¿Es posible reasignar el paquete a una ruta?',
+  HR5:'Se asigna una ruta alternativa para el mismo día.',
+  HR6:'Se programa la entrega para el día siguiente.',
+  L1:'El repartidor arriba al hub para retirar los paquetes asignados.',
+  Ld0:'¿El paquete debe pasar por otro depósito antes de la entrega final?',
+  L5:'El repartidor realiza la entrega en el domicilio del destinatario.',
+  Ld1:'¿La entrega en domicilio fue exitosa?',
+  L6:'Fin del proceso logístico. Entrega completada.',
+  LX1:'La entrega falló. Se activa el flujo de reintento.',
+  LX2:'Se reprograma el intento de entrega.',
+  Ld2:'¿El reintento es el mismo día o al día siguiente?',
+  LX3:'Se asigna a una ruta más tardía del mismo día.',
+  LX4:'Se asigna a la ruta de entrega del día siguiente.',
+};
+
+/* ═══════════════════════════════════════
+   DATOS DE SECCIONES
+═══════════════════════════════════════ */
+const SECTIONS = {
+seller: {
+  title: 'Seller / Origen',
+  w: 700, h: 720,
+  nodes: [
+    {id:'S0',  x:328, y:30,  w:44,  h:44,  type:'inicio',   label:'Inicio',                  shape:'circle'},
+    {id:'S1',  x:250, y:105, w:200, h:40,  type:'sistema',  label:'Venta generada'},
+    {id:'Sd1', x:250, y:172, w:200, h:44,  type:'decision', label:'¿Tipo de ingreso?',        shape:'diamond'},
+    {id:'S2',  x:60,  y:260, w:185, h:40,  type:'sistema',  label:'Ingreso automático'},
+    {id:'S3',  x:60,  y:322, w:185, h:40,  type:'sistema',  label:'Creación Shipment ID'},
+    {id:'S4',  x:60,  y:384, w:185, h:40,  type:'output',   label:'Imprimir etiqueta e-comm'},
+    {id:'S5',  x:455, y:260, w:185, h:40,  type:'sistema',  label:'Ingreso manual de venta'},
+    {id:'S6',  x:455, y:322, w:185, h:40,  type:'sistema',  label:'Creación Shipment ID'},
+    {id:'S7',  x:455, y:384, w:185, h:40,  type:'output',   label:'Emitir etiqueta TMS'},
+    {id:'S8',  x:250, y:465, w:200, h:40,  type:'humano',   label:'Picking y packing'},
+    {id:'Sd3', x:250, y:530, w:200, h:44,  type:'decision', label:'¿Tipo de inducción?',      shape:'diamond'},
+    {id:'S9',  x:60,  y:620, w:200, h:40,  type:'output',   label:'Seller lleva a drop off'},
+    {id:'S10', x:440, y:620, w:200, h:40,  type:'output',   label:'Aguarda retiro en domicilio'},
+  ],
+  arrows: [
+    {f:'S0',  t:'S1'},
+    {f:'S1',  t:'Sd1'},
+    {f:'Sd1', t:'S2',  label:'Automático', side:'left'},
+    {f:'S2',  t:'S3'},
+    {f:'S3',  t:'S4'},
+    {f:'S4',  t:'S8',  bent:true, fromSide:'bottom', toSide:'left'},
+    {f:'Sd1', t:'S5',  label:'Manual',     side:'right'},
+    {f:'S5',  t:'S6'},
+    {f:'S6',  t:'S7'},
+    {f:'S7',  t:'S8',  bent:true, fromSide:'bottom', toSide:'right'},
+    {f:'S8',  t:'Sd3'},
+    {f:'Sd3', t:'S9',  label:'Drop off',   side:'left'},
+    {f:'Sd3', t:'S10', label:'Colecta',    side:'right'},
+  ]
+},
+
+primera: {
+  title: 'Primera Milla',
+  w: 700, h: 1020,
+  nodes: [
+    {id:'F0',  x:255, y:20,  w:190, h:40, type:'output',   label:'Recepción punto drop off'},
+    {id:'F1',  x:255, y:82,  w:190, h:44, type:'decision', label:'¿Colecta guiada TMS?',       shape:'diamond'},
+    {id:'F2',  x:45,  y:152, w:175, h:40, type:'sistema',  label:'Generador de rutas'},
+    {id:'F3',  x:480, y:152, w:175, h:40, type:'humano',   label:'Operación autónoma'},
+    {id:'F4',  x:255, y:220, w:190, h:40, type:'sistema',  label:'Sugerencia paquetes disponibles'},
+    {id:'F5',  x:45,  y:288, w:175, h:40, type:'humano',   label:'Retiro en origen'},
+    {id:'F6',  x:480, y:288, w:175, h:40, type:'humano',   label:'Retiro no guiado'},
+    {id:'Fd1', x:255, y:358, w:190, h:44, type:'decision', label:'¿Paquete colectado?',         shape:'diamond'},
+    {id:'FX1', x:45,  y:440, w:175, h:40, type:'excepcion',label:'No colectado'},
+    {id:'F7',  x:255, y:440, w:190, h:40, type:'humano',   label:'Consolidación en vehículo'},
+    {id:'FR1', x:45,  y:520, w:175, h:40, type:'humano',   label:'Reintento de colecta'},
+    {id:'FI1', x:480, y:440, w:175, h:40, type:'humano',   label:'Ingreso Shipment manual'},
+    {id:'FO1', x:480, y:510, w:175, h:40, type:'output',   label:'Ingreso exitoso'},
+    {id:'FC1', x:480, y:580, w:175, h:40, type:'output',   label:'Cancelación de SHP'},
+    {id:'Fd4', x:255, y:518, w:190, h:44, type:'decision', label:'¿Paquete bajo custodia?',     shape:'diamond'},
+    {id:'FX5', x:45,  y:600, w:175, h:40, type:'excepcion',label:'Pérdida / hurto tránsito'},
+    {id:'F8',  x:255, y:600, w:190, h:40, type:'humano',   label:'Transporte a hub'},
+    {id:'Fd7', x:255, y:668, w:190, h:44, type:'decision', label:'¿Requiere transferencia?',    shape:'diamond'},
+    {id:'F9',  x:255, y:740, w:190, h:40, type:'humano',   label:'Transferencia entre drivers'},
+    {id:'Fd5', x:255, y:810, w:190, h:44, type:'decision', label:'¿Arribo hub confirmado?',     shape:'diamond'},
+    {id:'FX8', x:45,  y:885, w:175, h:40, type:'output',   label:'Cierre logístico incidente'},
+    {id:'H1r', x:455, y:885, w:190, h:40, type:'inicio',   label:'→ Hub / Depósito (H1)'},
+  ],
+  arrows: [
+    {f:'F0',  t:'F7',  direct:true, note:'drop off → vehículo'},
+    {f:'F1',  t:'F2',  label:'Sí',    side:'left'},
+    {f:'F1',  t:'F3',  label:'No',    side:'right'},
+    {f:'F2',  t:'F4'},
+    {f:'F3',  t:'F4'},
+    {f:'F4',  t:'F5',  side:'left'},
+    {f:'F4',  t:'F6',  side:'right'},
+    {f:'F5',  t:'Fd1'},
+    {f:'F6',  t:'Fd1'},
+    {f:'Fd1', t:'F7',  label:'Sí'},
+    {f:'Fd1', t:'FX1', label:'No',   side:'left'},
+    {f:'FX1', t:'FR1'},
+    {f:'FX1', t:'FI1', side:'right'},
+    {f:'FI1', t:'FO1'},
+    {f:'FO1', t:'F7',  bent:true},
+    {f:'FI1', t:'FC1'},
+    {f:'FR1', t:'F1',  loopback:true},
+    {f:'F7',  t:'Fd4'},
+    {f:'Fd4', t:'F8',  label:'Sí'},
+    {f:'Fd4', t:'FX5', label:'No',   side:'left'},
+    {f:'F8',  t:'Fd7'},
+    {f:'Fd7', t:'F9',  label:'Sí'},
+    {f:'Fd7', t:'Fd5', label:'No',   side:'right'},
+    {f:'F9',  t:'Fd5'},
+    {f:'Fd5', t:'H1r', label:'Sí',   side:'right'},
+    {f:'Fd5', t:'FX8', label:'No',   side:'left'},
+    {f:'FX5', t:'FX8', bent:true},
+  ]
+},
+
+hub: {
+  title: 'Hub / Depósito (WMS)',
+  w: 700, h: 1020,
+  nodes: [
+    {id:'H1',  x:255, y:20,  w:190, h:40, type:'humano',   label:'Recepción física'},
+    {id:'Hd0', x:255, y:82,  w:190, h:44, type:'decision', label:'¿Faltante detectado?',       shape:'diamond'},
+    {id:'HX0', x:45,  y:100, w:175, h:40, type:'excepcion',label:'Registro faltante recepción'},
+    {id:'HX9', x:45,  y:162, w:175, h:40, type:'humano',   label:'Investigación faltante'},
+    {id:'Hd9', x:45,  y:228, w:175, h:44, type:'decision', label:'¿Paquete localizado?',       shape:'diamond'},
+    {id:'HR7a',x:45,  y:310, w:175, h:40, type:'output',   label:'Retención / cuarentena'},
+    {id:'H2',  x:255, y:165, w:190, h:40, type:'sistema',  label:'Check-in en sistema'},
+    {id:'Hd1', x:255, y:235, w:190, h:44, type:'decision', label:'¿Ingreso OK?',               shape:'diamond'},
+    {id:'HX1', x:480, y:235, w:175, h:40, type:'excepcion',label:'Fallo en check-in'},
+    {id:'HR1', x:480, y:312, w:175, h:40, type:'humano',   label:'Mesa resolución inbound'},
+    {id:'HR2', x:480, y:380, w:175, h:44, type:'decision', label:'¿Resolución exitosa?',       shape:'diamond'},
+    {id:'HR7b',x:480, y:460, w:175, h:40, type:'output',   label:'Retención / cuarentena'},
+    {id:'H3',  x:255, y:320, w:190, h:40, type:'humano',   label:'Staging inbound'},
+    {id:'H4',  x:255, y:382, w:190, h:40, type:'humano',   label:'Inducción a sorting'},
+    {id:'H5',  x:255, y:444, w:190, h:40, type:'humano',   label:'Escaneo de paquete'},
+    {id:'Hd3', x:255, y:510, w:190, h:44, type:'decision', label:'¿Etiqueta válida?',          shape:'diamond'},
+    {id:'H6',  x:255, y:590, w:190, h:40, type:'sistema',  label:'Determinación destino'},
+    {id:'H7',  x:255, y:652, w:190, h:40, type:'humano',   label:'Clasificación staging out'},
+    {id:'H8',  x:255, y:714, w:190, h:40, type:'humano',   label:'Consolidación por ruta'},
+    {id:'Hd2', x:255, y:780, w:190, h:44, type:'decision', label:'¿Asignado a ruta?',          shape:'diamond'},
+    {id:'H9',  x:255, y:860, w:190, h:40, type:'sistema',  label:'Asignación a repartidor'},
+    {id:'HY1', x:480, y:780, w:175, h:40, type:'excepcion',label:'No asignado a ruta'},
+    {id:'HR3', x:480, y:844, w:175, h:40, type:'humano',   label:'Replanificación de ruta'},
+    {id:'HR4', x:480, y:910, w:175, h:44, type:'decision', label:'¿Reasignación posible?',     shape:'diamond'},
+    {id:'HR5', x:480, y:714, w:175, h:40, type:'output',   label:'Ruta alternativa mismo día'},
+    {id:'HR6', x:480, y:648, w:175, h:40, type:'output',   label:'Ruta día siguiente'},
+    {id:'L1r', x:60,  y:955, w:190, h:40, type:'inicio',   label:'→ Última Milla (L1)'},
+  ],
+  arrows: [
+    {f:'H1',  t:'Hd0'},
+    {f:'Hd0', t:'HX0', label:'Sí',  side:'left'},
+    {f:'Hd0', t:'H2',  label:'No'},
+    {f:'HX0', t:'HX9'},
+    {f:'HX9', t:'Hd9'},
+    {f:'Hd9', t:'H2',  label:'Sí',  bent:true},
+    {f:'Hd9', t:'HR7a',label:'No'},
+    {f:'H2',  t:'Hd1'},
+    {f:'Hd1', t:'H3',  label:'Sí'},
+    {f:'Hd1', t:'HX1', label:'No',  side:'right'},
+    {f:'HX1', t:'HR1'},
+    {f:'HR1', t:'HR2'},
+    {f:'HR2', t:'H2',  label:'Sí',  bent:true},
+    {f:'HR2', t:'HR7b',label:'No'},
+    {f:'H3',  t:'H4'},
+    {f:'H4',  t:'H5'},
+    {f:'H5',  t:'Hd3'},
+    {f:'Hd3', t:'HX1', label:'No',  side:'right'},
+    {f:'Hd3', t:'H6',  label:'Sí'},
+    {f:'H6',  t:'H7'},
+    {f:'H7',  t:'H8'},
+    {f:'H8',  t:'Hd2'},
+    {f:'Hd2', t:'H9',  label:'Sí'},
+    {f:'Hd2', t:'HY1', label:'No',  side:'right'},
+    {f:'HY1', t:'HR3'},
+    {f:'HR3', t:'HR4'},
+    {f:'HR4', t:'HR5', label:'Sí'},
+    {f:'HR5', t:'H9',  bent:true},
+    {f:'HR4', t:'HR6', label:'No'},
+    {f:'HR6', t:'H8',  bent:true},
+    {f:'H9',  t:'L1r', bent:true},
+  ]
+},
+
+ultima: {
+  title: 'Última Milla',
+  w: 700, h: 660,
+  nodes: [
+    {id:'L1',  x:255, y:30,  w:190, h:40, type:'humano',   label:'Arribo al hub'},
+    {id:'Ld0', x:255, y:94,  w:190, h:44, type:'decision', label:'¿Pasa por otro depósito?',  shape:'diamond'},
+    {id:'F8r', x:45,  y:175, w:175, h:40, type:'inicio',   label:'→ Primera Milla (F8)'},
+    {id:'L5',  x:255, y:200, w:190, h:40, type:'humano',   label:'Entrega en domicilio'},
+    {id:'Ld1', x:255, y:268, w:190, h:44, type:'decision', label:'¿Entrega exitosa?',         shape:'diamond'},
+    {id:'L6',  x:328, y:360, w:44,  h:44, type:'fin',      label:'Fin',                       shape:'circle'},
+    {id:'LX1', x:45,  y:360, w:175, h:40, type:'excepcion',label:'Entrega fallida'},
+    {id:'LX2', x:45,  y:428, w:175, h:40, type:'humano',   label:'Reprogramación entrega'},
+    {id:'Ld2', x:45,  y:496, w:175, h:44, type:'decision', label:'¿Mismo día o día siguiente?',shape:'diamond'},
+    {id:'LX3', x:45,  y:580, w:175, h:40, type:'output',   label:'Ruta más tardía mismo día'},
+    {id:'LX4', x:265, y:580, w:175, h:40, type:'output',   label:'Ruta del día siguiente'},
+  ],
+  arrows: [
+    {f:'L1',  t:'Ld0'},
+    {f:'Ld0', t:'F8r', label:'Sí',       side:'left'},
+    {f:'Ld0', t:'L5',  label:'No'},
+    {f:'L5',  t:'Ld1'},
+    {f:'Ld1', t:'L6',  label:'Sí'},
+    {f:'Ld1', t:'LX1', label:'No',        side:'left'},
+    {f:'LX1', t:'LX2'},
+    {f:'LX2', t:'Ld2'},
+    {f:'Ld2', t:'LX3', label:'Mismo día', side:'left'},
+    {f:'Ld2', t:'LX4', label:'Día sig.',  side:'right'},
+    {f:'LX3', t:'L5',  bent:true},
+    {f:'LX4', t:'L5',  bent:true},
+  ]
+}
+};
+
+/* ═══════════════════════════════════════
+   ZOOM
+═══════════════════════════════════════ */
+let zoom = 1;
+function setZoom(v) {
+  zoom = Math.min(2, Math.max(0.4, v));
+  document.getElementById('diagram-container').style.transform = `scale(${zoom})`;
+  document.getElementById('zoom-label').textContent = Math.round(zoom * 100) + '%';
+}
+function zoomIn()  { setZoom(zoom + 0.15); }
+function zoomOut() { setZoom(zoom - 0.15); }
+function resetZoom(){ setZoom(1); }
+
+/* ═══════════════════════════════════════
+   RENDER
+═══════════════════════════════════════ */
+let currentSection = 'seller';
+
+function getNode(sec, id) {
+  return SECTIONS[sec].nodes.find(n => n.id === id);
+}
+
+function nodeCX(n) { return n.x + n.w / 2; }
+function nodeCY(n) { return n.y + n.h / 2; }
+
+function wrapText(text, maxChars) {
+  const words = text.split(' ');
+  const lines = []; let cur = '';
+  for (const w of words) {
+    if ((cur + ' ' + w).trim().length > maxChars && cur) {
+      lines.push(cur); cur = w;
+    } else {
+      cur = (cur + ' ' + w).trim();
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function renderNode(n) {
+  const c = C[n.type] || C.sistema;
+  let shape = '';
+  if (n.shape === 'circle') {
+    shape = `<circle cx="${n.x + n.w/2}" cy="${n.y + n.h/2}" r="${n.w/2}"
+      fill="${c.fill}" stroke="${c.stroke}" stroke-width="1"/>`;
+  } else if (n.shape === 'diamond') {
+    const mx = n.x + n.w/2, my = n.y + n.h/2, hw = n.w/2 + 8, hh = n.h/2 + 4;
+    shape = `<polygon points="${mx},${my-hh} ${mx+hw},${my} ${mx},${my+hh} ${mx-hw},${my}"
+      fill="${c.fill}" stroke="${c.stroke}" stroke-width="1"/>`;
+  } else {
+    shape = `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="7"
+      fill="${c.fill}" stroke="${c.stroke}" stroke-width="1"/>`;
+  }
+
+  const lines = wrapText(n.label, 24);
+  let textEl = '';
+  const cx = nodeCX(n), cy2 = nodeCY(n);
+  if (lines.length === 1) {
+    textEl = `<text x="${cx}" y="${cy2}" text-anchor="middle" dominant-baseline="central"
+      font-size="11.5" fill="${c.text}" font-weight="500">${lines[0]}</text>`;
+  } else {
+    const startY = cy2 - ((lines.length - 1) * 7);
+    textEl = '<text text-anchor="middle" font-size="11" fill="' + c.text + '" font-weight="500">';
+    lines.forEach((l, i) => {
+      textEl += `<tspan x="${cx}" y="${startY + i * 14}">${l}</tspan>`;
+    });
+    textEl += '</text>';
+  }
+
+  return `<g class="node-g" data-id="${n.id}" style="cursor:pointer" onclick="selectNode('${n.id}')"
+    onmouseenter="hoverNode(this)" onmouseleave="unhoverNode(this)">
+    ${shape}${textEl}
+  </g>`;
+}
+
+function renderArrow(a, nodes) {
+  const fn = nodes.find(n => n.id === a.f);
+  const tn = nodes.find(n => n.id === a.t);
+  if (!fn || !tn) return '';
+
+  const x1 = nodeCX(fn), y1 = fn.y + fn.h + 2;
+  const x2 = nodeCX(tn), y2 = tn.y - 2;
+  const stroke = '#999';
+
+  let pathD = '';
+  if (a.side === 'left') {
+    // Fan out to left child
+    const midY = (y1 + y2) / 2;
+    pathD = `M${x1} ${y1} C${x1} ${midY} ${x2} ${midY} ${x2} ${y2}`;
+  } else if (a.side === 'right') {
+    const midY = (y1 + y2) / 2;
+    pathD = `M${x1} ${y1} C${x1} ${midY} ${x2} ${midY} ${x2} ${y2}`;
+  } else if (a.bent) {
+    const midY = (y1 + y2) / 2;
+    pathD = `M${x1} ${y1} C${x1} ${midY} ${x2} ${midY} ${x2} ${y2}`;
+  } else if (a.loopback) {
+    // Loop back arrow (reintento → F1)
+    pathD = `M${x1} ${y1} L${x1} ${y1+20} L${x1-40} ${y1+20} L${x1-40} ${tn.y+tn.h/2} L${tn.x-8} ${tn.y+tn.h/2}`;
+  } else {
+    pathD = `M${x1} ${y1} L${x2} ${y2}`;
+  }
+
+  let labelEl = '';
+  if (a.label) {
+    const lx = (x1 + x2) / 2 + (a.side === 'left' ? -12 : a.side === 'right' ? 12 : 0);
+    const ly = (y1 + y2) / 2;
+    labelEl = `<rect x="${lx - 20}" y="${ly - 8}" width="40" height="14" rx="4"
+      fill="white" opacity="0.9"/>
+      <text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="central"
+      font-size="9.5" fill="#666" font-weight="500">${a.label}</text>`;
+  }
+
+  return `<g>
+    <path d="${pathD}" stroke="${stroke}" stroke-width="1" fill="none"
+      marker-end="url(#arrowhead)" stroke-linecap="round"/>
+    ${labelEl}
+  </g>`;
+}
+
+function render() {
+  const s = SECTIONS[currentSection];
+  const svg = document.getElementById('diagram-svg');
+  svg.setAttribute('width', s.w);
+  svg.setAttribute('height', s.h);
+  svg.setAttribute('viewBox', `0 0 ${s.w} ${s.h}`);
+
+  let html = `<defs>
+    <marker id="arrowhead" viewBox="0 0 10 10" refX="9" refY="5"
+      markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M1 1L9 5L1 9" fill="none" stroke="#999" stroke-width="1.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>`;
+
+  s.arrows.forEach(a => { html += renderArrow(a, s.nodes); });
+  s.nodes.forEach(n => { html += renderNode(n); });
+
+  svg.innerHTML = html;
+  document.getElementById('info-id').textContent = '—';
+  document.getElementById('info-label').textContent = 'Seleccioná un nodo';
+  document.getElementById('info-desc').textContent = 'Hacé clic en cualquier nodo del diagrama para ver su descripción detallada.';
+  document.getElementById('info-icon').textContent = 'ℹ️';
+}
+
+function showSection(key, btn) {
+  currentSection = key;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('section-title').textContent = SECTIONS[key].title;
+  resetZoom();
+  render();
+}
+
+function selectNode(id) {
+  const desc = DESCS[id] || 'Sin descripción disponible.';
+  const s = SECTIONS[currentSection];
+  const n = s.nodes.find(x => x.id === id);
+  const c = C[n ? n.type : 'sistema'];
+  const icon = TYPE_ICONS[n ? n.type : 'sistema'] || 'ℹ️';
+
+  document.getElementById('info-icon').textContent = icon;
+  document.getElementById('info-icon').style.background = c.fill;
+  document.getElementById('info-id').textContent = id;
+  document.getElementById('info-id').style.color = c.text;
+  document.getElementById('info-label').textContent = n ? n.label : id;
+  document.getElementById('info-desc').textContent = desc;
+
+  document.querySelectorAll('.node-g').forEach(g => {
+    g.style.opacity = g.dataset.id === id ? '1' : '0.4';
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.node-g').forEach(g => g.style.opacity = '1');
+  }, 2200);
+}
+
+function hoverNode(el) {
+  el.style.filter = 'brightness(0.92)';
+}
+function unhoverNode(el) {
+  el.style.filter = '';
+}
+
+/* ── Init ── */
+render();
+</script>
+</body>
+</html>
